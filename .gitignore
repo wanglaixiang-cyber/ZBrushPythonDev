@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+.idea/
+.DS_Store
+# 插件运行时状态(配置/记账)
+plugin/**/settings.json
+plugin/**/config.json
+*.old-bak*
+dist/
+
+# 不随源码仓发布:
+# Maxon 官方 SDK 原件(只读引用,再分发受其许可限制)
+sdk/
+# 本地回滚快照(tar.gz)
+_backup/
+# 真机探针产生的大文件/模型/贴图
+_probe/
