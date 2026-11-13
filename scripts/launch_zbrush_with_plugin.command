@@ -6,13 +6,19 @@
 
 set -e
 
-PROJECT="/Users/wanglaixiang/PycharmProjects/ZBrushPythonDev"
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 PLUGIN="$PROJECT/plugin/zbtools"
 
-export PYTHONPATH="$PLUGIN:${PYTHONPATH}"
-# 备选机制:该目录下所有 *.py 会在启动时执行
-export ZBRUSH_PLUGIN_PATH="$PLUGIN"
+export PYTHONPATH="$PLUGIN${PYTHONPATH:+:$PYTHONPATH}"
+# 只设 PYTHONPATH(ZBrush 启动时会扫描其中的 init.py)。
+# 不要再设 ZBRUSH_PLUGIN_PATH 指同一目录:两个机制都会执行 init.py,
+# 结果是同一次启动里 register() 跑两遍(面板复用能兜住,但日志/子面板会重复)。
 
 echo "PYTHONPATH=$PYTHONPATH"
 echo "启动 ZBrush ..."
-exec "/Applications/Maxon ZBrush 2026/ZBrush.app/Contents/MacOS/ZBrush" "$@"
+ZBRUSH_APP="${ZBRUSH_APP:-/Applications/Maxon ZBrush 2026/ZBrush.app}"
+if [[ ! -x "$ZBRUSH_APP/Contents/MacOS/ZBrush" ]]; then
+  echo "找不到 ZBrush:请用 ZBRUSH_APP=/path/to/ZBrush.app 指定" >&2
+  exit 1
+fi
+exec "$ZBRUSH_APP/Contents/MacOS/ZBrush" "$@"

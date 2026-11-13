@@ -1,165 +1,65 @@
-# ZBrush Python 开发项目 (2026.2.1 · SDK 2026.1)
+# ZBTools —— ZBrush 2026 Python 插件
 
-基于 Maxon 官方 `ZBrush_Python_SDK_2026_1_0` 的 PyCharm 开发环境。
+> **这是一个 vibecoding 项目**:代码与文档主要由 AI 辅助、按本机实测反馈反复迭代。
+> 已经在 macOS + ZBrush 2026 上实际使用,但不保证所有版本/环境都稳定;
+> 建议先在可丢弃的工程里试用,重要工作注意保存。
+> 仓库只含插件源码 —— Maxon 官方 SDK 与安装包都不在这里。
 
-## 目录结构
+ZBTools 在 ZBrush 右侧菜单栏里加一个面板,里面是几个互相独立的小功能:
 
-```
-ZBrushPythonDev/
-├── .venv/              # Python 3.11.9(与 ZBrush 内嵌同版本);zbrush_sdk.pth 挂载 sdk/api
-├── sdk/                # Maxon 官方 SDK 原件(只读引用:api 存根 / docs / examples)
-├── plugin/zbtools/     # 插件本体
-│   ├── init.py         #   ZBrush 入口(只做 sys.path + register)
-│   └── zbtools/
-│       ├── app.py      #   装配:建面板 → 遍历 features 注册
-│       ├── ui.py       #   通用 UI + 提示(警告换底色)
-│       ├── settings.py #   配置 + 状态版本
-│       ├── notes.py errors.py
-│       ├── zbapi/      #   共用:screen / model / canvas / clipboard
-│       └── features/   #   功能:registry + true_scale/ + ruler/ + tex2pp/ + depthimg/ + meshtools/(空占位)
-├── scripts/            # 开发脚本:load_plugin / probe_* / gen_api_reference / 启动器
-├── tests/              # run_all / test_architecture / test_true_scale / test_ruler* / test_tex2pp / test_ui / fake_zbrush
-├── _backup/            # 改动前的源码快照(tar.gz;不进版本库,作为额外回滚手段)
-├── docs/               # DEVELOPMENT.md(规范) + API_REFERENCE.md(自动生成)
-└── README.md
-```
-
-## 目录约定(重要)
-
-| 目录 | 定位 | 能否修改 |
+| 功能 | 说明 | 平台 |
 |---|---|---|
-| `sdk/` | 官方 SDK 原件(`api` 类型存根 / `docs` / `examples`) | ❌ **只读引用**,整包替换式更新 |
-| `plugin/` `scripts/` `tests/` `docs/` | 你自己的代码与文档 | ✅ 改这里 |
-| `.venv/` | Python 3.11.9 环境 | 不进版本库(`.gitignore`) |
+| **实际大小**(`true_scale`) | 选中模型按屏幕物理尺寸 1:1 显示,可核验校准 | macOS / Windows* |
+| **屏幕真尺**(`ruler`) | 屏幕上贴一把真实刻度的尺子(可旋转、可多把) | 仅 macOS |
+| **贴图转色**(`tex2pp`) | 低模的贴图经 UV 投射成高模的 polypaint,不用细分低模 | macOS / Windows* |
+| **图片转深度图**(`depthimg`) | 选中模型的贴图 → 灰度深度图 → 送回 ZBrush;内置 DA V2 四档(仅 V2-S 可商用) | macOS / Windows* |
+| **网格修复**(`meshtools`) | 空占位:面板只保留分区标题,暂无控件 | — |
 
-- SDK 的接入方式是 **venv 里的 `.pth` 文件**(`.venv/.../site-packages/zbrush_sdk.pth`,
-  内容就是 `sdk/api` 的绝对路径)—— 不往 `sdk/` 里写任何东西
-- `sdk/api` 是**类型存根**(函数体 `...`),真正的 `zbrush` 模块在 ZBrush 内嵌 VM 里;
-  改存根对运行时毫无影响,只会让提示与真实 API 脱节
-- 升级 SDK:直接整包覆盖 `sdk/`,没有需要合并的改动
-- PyCharm 建议:右键 `sdk` → *Mark Directory as → **Library Root***
-  (别选 Sources Root),这样全局搜索/重构不会翻 SDK 里那几百个文件
-- `__pycache__/` 是本地 import 产生的副产品,已在 `.gitignore` 中排除
+\* Windows 产物未在真实 Windows + ZBrush 上验证;当前发布与实测以 macOS 为准。
 
-## API 索引(想都看看的话)
+## 安装(macOS)
 
-`docs/API_REFERENCE.md` —— 从本地 SDK 自动生成的**完整函数索引**(145 个):
-按官方分类(Gui 68 / Modeling 38 / System 23)+ 每条的签名与说明。
-重新生成:`.venv/bin/python scripts/gen_api_reference.py`
+发行包不在本仓库。把它解压到固定目录(例如 `~/Applications/ZBTools`),然后:
 
-`docs/MEASURING.md` —— ZBrush 原生量测能力调研:TransPose 动作线(= 原生尺子)的参数、
-吸附(`Snap Max distance`)、Gizmo 3D 与 Y 键的真实含义、以及 `canvas_click` / `get_transpose` 等可编程接口。
+1. 双击 `launch/Enable Autoload.command`(首次被 Gatekeeper 拦就右键 → 打开);
+2. **完全退出 ZBrush(Cmd+Q)**,再从 Dock/访达正常启动 **ZBrush 2026**。
 
-速查:
+之后每次启动都会自动加载;搬动插件目录后要重跑一次 Enable。
+细节、依赖与排障见 [docs/INSTALL.md](docs/INSTALL.md)。
 
-```python
-import zbrush.commands as zbc            # 主模块
-import zbrush.utils as zbu               # run_path / run_script / clear_output
-import zbrush.zscript_compatibility as zbz
-```
+## 开发
 
-- 每个函数都带示例片段:`sdk/examples/fragments/`
-- 官方 HTML 文档(可搜索):`sdk/docs/index.html`(用浏览器打开)
-- 在线最新版:https://developers.maxon.net/docs/zbrush/py
+ZBrush 2026 内嵌 CPython 3.11.9。
 
-## 插件与功能
-
-- 插件本体:`plugin/zbtools/`(`README` 见其中);当前功能:
-  - `true_scale`(显示名「实际大小」)
-  - `ruler`(显示名「屏幕真尺」:屏幕上的物理真尺,1 mm 就是 1 mm)
-  - `tex2pp`(显示名「贴图转色」:低模的贴图经 UV **投射成高模的 polypaint** ——
-    不用细分低模、不用给高模做 UV;原理/实测结论/排障见
-    `plugin/zbtools/zbtools/features/tex2pp/README.md`)
-  - `depthimg`(显示名「图片转深度图」:读**选中模型的贴图** → 灰度深度图 → 送回 ZBrush
-    (默认替换模型贴图);**面板那四格是 Depth Anything V2 的四档规模**(V2-S/B/L/G,
-    只有 S 可商用,其余要开 `allow_nc_weights`);`da3` / `luma`(亮度) / `sdf`(浮雕)
-    三个引擎仍在配置里可切;与①②无关,见
-    `plugin/zbtools/zbtools/features/depthimg/README.md`)
-  - `meshtools`(显示名「网格修复」:**功能已清空,只剩分区占位** —— 面板上仍显示这一区,
-    里面没有控件;历史实现与设计见 `docs/DESIGN_MESHTOOLS.md`,源码备份见 `_backup/`)
-- 开发规范与结构说明:**`docs/DEVELOPMENT.md`**(依赖方向、命名、怎么加新功能)
-- 功能说明:`plugin/zbtools/zbtools/features/true_scale/README.md`、
-  `plugin/zbtools/zbtools/features/ruler/README.md`、
-  `plugin/zbtools/zbtools/features/meshtools/README.md`
-
-加载(热更新):
-```
-ZBrush > ZScript 面板 > Python Scripting 子面板 > Load > scripts/load_plugin.py
-```
-
-打包发行版(可发给别人安装的正式包):
 ```bash
-.venv/bin/python scripts/package_plugin.py                 # 双平台,全部功能
+# 1) 自备官方 SDK:仓库不含,把 Maxon 的 ZBrush Python SDK 放到 sdk/
+# 2) 建 .venv,并用 .pth 把 sdk/api 挂进解释器(见 docs/DEVELOPMENT.md)
+# 3) 测试(不需要开 ZBrush)
+.venv/bin/python tests/run_all.py
+# 4) 热更新:ZBrush > ZScript > Python Scripting > Load > scripts/load_plugin.py
+# 5) 打包 macOS 发行版(产物在 dist/,不进仓库)
 .venv/bin/python scripts/package_plugin.py --platform macos
-.venv/bin/python scripts/package_plugin.py --features true_scale,tex2pp
-```
-产物在 `dist/ZBTools-<版本>-<平台>/` 与同名 `.zip`,每个包都会自动跑
-`scripts/verify_package.py`(校验字节码版本、源码泄漏、`init.py(c)` 与
-`manual/Load ZBTools.py` 两个入口能真实装配面板、`MANIFEST.sha256` 一致)。
-安装方式(ZBrush 的 Python 插件 = 目录 + `init.py`,靠 `PYTHONPATH` 扫描):
-包的 `launch/` 里带一键启动器,细节见包内 `INSTALL.md` / `docs/INSTALL.md`。
-
-测试(不需要开 ZBrush):
-```bash
-.venv/bin/python tests/run_all.py     # 架构约束 + 逻辑 + 交互
 ```
 
-## 环境说明
+## 目录
 
-- **解释器**:`.venv`(CPython 3.11.9,与 ZBrush 2026.2 内嵌 VM 完全一致;
-  来源 `/Library/Frameworks/Python.framework/Versions/3.11`)
-- **存根接入**:`sdk/api` 通过 `site-packages/zbrush_sdk.pth` 挂进 venv,
-  项目内任意位置 `import zbrush.commands` 都能获得补全与类型提示。
-- **重要概念**:`sdk/api` 里是官方**类型存根**(函数体都是 `...`),
-  真正的 `zbrush` 模块只存在于 ZBrush 内嵌 VM 里。
-  所以:本地 = 编辑/补全/静态检查;运行 = 必须在 ZBrush 内。
-
-## 如何运行脚本
-
-### 方式 A:ZBrush 界面内(推荐)
-1. 打开 ZBrush
-2. 顶部 `ZScript` 面板 → `Python Scripting` 子面板 → `Load` → 选择脚本
-3. 查看结果:窗口底部打开 Python 控制台输出(`ZScript` → `Script Window Mode` 子面板切到 Python Output)
-
-也可以在 ZScript 面板的 Python 控制台里逐行敲代码测试。
-
-### 方式 B:命令行启动参数(启动即跑)
-```bash
-# 先退出已运行的 ZBrush,再执行:
-"/Applications/Maxon ZBrush 2026/ZBrush.app/Contents/MacOS/ZBrush" -script \
-  "/Users/wanglaixiang/PycharmProjects/ZBrushPythonDev/scripts/hello_zbrush.py"
 ```
-> ⚠️ 官方警告:若命令行里还要带 `.ZPR` 工程文件,它必须是**最后一个参数**(不是第一个)。
-
-### 官方示例
-```bash
-# 把示例换成 sdk/examples/ 里的任意 .py 即可,例如:
-#   sdk/examples/ex_hello_world.py
-#   sdk/examples/gui/ex_gui_palette.py
-#   sdk/examples/modeling/ex_mod_subtool_array.py
+plugin/zbtools/  插件本体(init.py + zbtools/ 包 + features/)
+scripts/         开发、探针、打包脚本
+tests/           假 ZBrush 替身与回归测试
+docs/            安装、开发规范、API 索引、发行说明、实测笔记
 ```
 
-## PyCharm 配置(已就绪项)
+## 文档
 
-- [x] venv 解释器创建(`.venv`,PyCharm 打开后会自动识别为项目解释器)
-- [x] `import zbrush` 补全可用(经 .pth 挂载)
-- [ ] 可选:Settings → Project Structure → 把 `sdk/api` 标为 **Sources Root**(更直观)
-- [ ] 可选:Settings → Editor → Inspections → 开启 Python 类型检查告警
+- [docs/INSTALL.md](docs/INSTALL.md) —— 安装、依赖、排障
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) —— 结构约定、加功能、打包
+- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) —— ZBrush Python API 索引
+- [docs/RELEASE-0.2.4.md](docs/RELEASE-0.2.4.md) —— 当前版本说明
 
-## 注意事项(官方文档要点)
+## 说明
 
-- ZBrush Python VM 是**持久进程**:全局变量、导入的模块会在多次脚本执行间残留,
-  写插件时注意隔离(用 `main()` 函数 + `if __name__ == "__main__"` 是官方推荐风格)。
-- **不支持** `multiprocessing`;`subprocess` 不能拿来再启动 ZBrush 自身解释器。
-- 第三方库大部分能用但**官方不提供支持**(出问题找包作者/社区)。
-- 脚本所在目录**不会**自动进 `sys.path`;需要自己的模块时用 `PYTHONPATH` 或
-  `ZBRUSH_PLUGIN_PATH`(启动时扫描目录内全部 `*.py`)。
-- Python 目前是 ZScript 命令流的包装层,**不能直接操作 ZBrush 内部数据**。
-
-## 官方资料链接
-
-- 在线文档(最新版):https://developers.maxon.net/docs/zbrush/py
-- 官方示例仓库:https://github.com/Maxon-Computer/ZBrush-Python-API-Examples
-- SDK 下载入口:https://developers.maxon.net/forum/topic/15246/zbrush-sdk-overview
-- 离线文档:本项目的 `sdk/docs/` 或应用内
-  `/Applications/Maxon ZBrush 2026/Documentation/python-api/`
+- 插件内部模块以 `.pyc` 发布;入口 `init.py` 与外部工具脚本保持源码(原因见 `docs/DEVELOPMENT.md`)。
+- `depthimg` 的 V2-B / V2-L / V2-G 权重是 **CC-BY-NC-4.0**,只适合自用;
+  V2-S 是 Apache-2.0,可商用。
+- 仓库不含 Maxon SDK、安装包、本地探针产物与环境文件。

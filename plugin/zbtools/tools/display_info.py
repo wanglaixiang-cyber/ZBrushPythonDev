@@ -7,7 +7,7 @@
 输出 JSON 到 stdout,供 ZBTools 插件通过 subprocess 调用。
 
 单独运行:
-    /Users/wanglaixiang/PycharmProjects/ZBrushPythonDev/.venv/bin/python tools/display_info.py
+    .venv/bin/python plugin/zbtools/tools/display_info.py   # 在项目根执行
 """
 
 from __future__ import annotations
